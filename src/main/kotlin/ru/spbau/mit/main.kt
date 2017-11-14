@@ -1,5 +1,7 @@
 package ru.spbau.mit
 
+import java.util.BitSet
+
 /**
  * Class that solves codeforces problem.
  * It tries to replace wild cards(?) to letters to create lexicographically smallest palindrome.
@@ -8,12 +10,13 @@ class PatternHandler(private val pattern: CharArray,
                      private val alphabet: Int) {
 
     private val IMPOSSIBLE_MESSAGE = "IMPOSSIBLE"
-    private val usedChars = BooleanArray(alphabet)
+    private val usedChars = BitSet(alphabet)
 
     init {
         pattern
                 .filter { it != '?' }
-                .forEach { usedChars[getIndex(it)] = true }
+                .map { getIndex(it) }
+                .forEach { usedChars[it] = true }
     }
 
     /**
@@ -22,21 +25,23 @@ class PatternHandler(private val pattern: CharArray,
     private fun getIndex(symbol: Char): Int = symbol - 'a'
 
     /**
-     * Get letter that should be on the wild card sign.
+     * Returns index of symbol in usedChars array
+     */
+    private fun getSymbol(index: Int): Char = 'a' + index
+
+    /**
+     * Get index letter that should be on the wild card sign.
      * It's take the most biggest lexicographically letter,
      * because we are starting to remove wild cards from center of the palindrome.
      */
-    private fun getAppropriateLetter(): Char {
-        val index = usedChars.lastIndexOf(false)
-        val result: Char
+    private fun getAppropriateLetterIndex(): Int {
+        val index = usedChars.previousClearBit(alphabet - 1)
 
-        result = if (index == -1) {
-            'a'
+        return if (index == -1) {
+            0
         } else {
-            'a' + index
+            index
         }
-
-        return result
     }
 
     /**
@@ -45,8 +50,9 @@ class PatternHandler(private val pattern: CharArray,
      */
     private fun removeWildCardPairs(l: Int, r: Int) {
         if (pattern[l] == '?' && pattern[r] == '?') {
-            val letter = getAppropriateLetter()
-            usedChars[getIndex(letter)] = true
+            val letterIndex = getAppropriateLetterIndex()
+            val letter = getSymbol(letterIndex)
+            usedChars[letterIndex] = true
             pattern[l] = letter
             pattern[r] = letter
         }
@@ -77,8 +83,10 @@ class PatternHandler(private val pattern: CharArray,
         }
 
         var r = pattern.size / 2
-        var l = r - (pattern.size + 1) % 2
-        while (r - l + 1 <= pattern.size) {
+        while (r < pattern.size) {
+            val indent = r - pattern.size / 2
+            val l = r - (pattern.size + 1) % 2 - 2 * indent
+
             // process pattern
             removeWildCardPairs(l, r)
             cleanWildCards(l, r)
@@ -88,14 +96,13 @@ class PatternHandler(private val pattern: CharArray,
             }
 
             r++
-            l--
         }
 
-        if (usedChars.contains(false)) {
+        if (usedChars.cardinality() != alphabet) {
             return IMPOSSIBLE_MESSAGE
         }
 
-        return pattern.joinToString(separator = "")
+        return String(pattern)
     }
 }
 
