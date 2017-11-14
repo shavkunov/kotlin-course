@@ -8,11 +8,19 @@ import ru.spbau.mit.parser.FunLexer
 import ru.spbau.mit.parser.FunParser
 
 fun main(args: Array<String>) {
-    val funLexer = FunLexer(CharStreams.fromFileName(args[0]))
-    val tokens = CommonTokenStream(funLexer)
-    val funParser = FunParser(tokens)
-    val fileContext = funParser.file()
+    if (args.isEmpty()) {
+        println("Pass file to interpret")
+        return
+    }
 
-    val tree = AstVisitor().createAst(fileContext)
-    Interpreter(System.out).interpret(tree)
+    try {
+        val source = args[0]
+        InterpretFile(System.out).interpret(source)
+
+    } catch (error: ParsingException) {
+        println("There are some parsing errors. Aborted")
+    } catch (error: InterpretationException) {
+        println("File cannot be interpreted, reason:")
+        println(error.message)
+    }
 }

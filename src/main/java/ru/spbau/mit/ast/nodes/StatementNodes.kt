@@ -5,7 +5,7 @@ import ru.spbau.mit.ast.Visitor
 interface Statement : AstNode
 
 data class Function(
-        val name: Identifier,
+        val functionIdentifier: Identifier,
         val parameters: List<Identifier>,
         val body: Block
 ) : Statement {
@@ -15,7 +15,7 @@ data class Function(
 }
 
 data class Variable(
-        val name: Identifier,
+        val variableIdentifier: Identifier,
         val expression: Expression?
 ) : Statement {
     override fun <T> accept(visitor: Visitor<T>): T {

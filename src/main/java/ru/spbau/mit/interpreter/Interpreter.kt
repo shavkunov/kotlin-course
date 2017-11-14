@@ -7,7 +7,7 @@ import ru.spbau.mit.ast.nodes.*
 import ru.spbau.mit.ast.nodes.Function
 import java.io.PrintStream
 
-class Interpreter(private val printStream: PrintStream,
+class Interpreter(private val outputStream: PrintStream,
                   private var context: Context = Context()): Visitor<Interpreter.InterpreterResult> {
     fun interpret(tree: Ast): InterpreterResult {
         return visit(tree.root)
@@ -39,7 +39,7 @@ class Interpreter(private val printStream: PrintStream,
     }
 
     override fun visitVariable(variable: Variable): InterpreterResult {
-        context.addVariable(variable.name.name)
+        context.addVariable(variable.variableIdentifier.name)
         return UNIT_RESULT
     }
 
@@ -56,11 +56,11 @@ class Interpreter(private val printStream: PrintStream,
 
     override fun visitIfStatement(ifStatement: IfStatement): InterpreterResult {
         if (visit(ifStatement.condition).value!! != 0) {
-            visit(ifStatement.body)
+            return visit(ifStatement.body)
         }
 
         if (ifStatement.elseBody != null) {
-            visit(ifStatement.elseBody)
+            return visit(ifStatement.elseBody)
         }
 
         return UNIT_RESULT
@@ -77,32 +77,38 @@ class Interpreter(private val printStream: PrintStream,
     }
 
     override fun visitFunctionCall(functionCall: FunctionCall): InterpreterResult {
-        val function = context.getFunction(functionCall.funName.name)
+        val function = context.getFunction(functionCall.funIdentifier.name)
         val args = functionCall.arguments.map { visit(it).value!! }
         if (function != null) {
             val outerContext = context
             context = Context(context)
 
-            val paramIterator = function.parameters.listIterator()
-            for (arg in args) {
-                val param = paramIterator.next()
-                context.addVariable(param.name, arg)
-            }
-            val interpretedBody = visit(function.body)
-            context = outerContext
-            return InterpreterResult(
-                    if (interpretedBody.shouldReturn) interpretedBody.value!! else DEFAULT_RESULT,
-                    false
-            )
-        } else {
-            if (functionCall.funName == PRINTLN) {
-                val argsString = args.joinToString(" ") { it.toString() }
-                printStream.println(argsString)
-                return InterpreterResult(DEFAULT_RESULT, false)
+            for (index in 0 .. (args.size - 1)) {
+                val argument = args[index]
+                val parameter = function.parameters[index]
+
+                context.addVariable(parameter.name, argument)
             }
 
-            throw InterpretationException("")
+            val functionBody = visit(function.body)
+            context = outerContext
+
+            val interpreterValue = if (functionBody.shouldReturn)
+                functionBody.value!!
+            else
+                DEFAULT_RESULT
+
+            return InterpreterResult(interpreterValue, false)
+        } else {
+            if (functionCall.funIdentifier == PRINTLN) {
+                val argsString = args.joinToString(" ") { it.toString() }
+                outputStream.println(argsString)
+
+                return InterpreterResult(DEFAULT_RESULT, false)
+            }
         }
+
+        throw InterpretationException("Function " + functionCall.funIdentifier + " not found")
     }
 
     override fun visitBinaryExpression(binaryExpression: BinaryExpression): InterpreterResult {
@@ -123,7 +129,7 @@ class Interpreter(private val printStream: PrintStream,
             "!=" -> if (leftValue  != rightValue) 1 else 0
             "||" -> if (rightValue != 0) 1 else 0
             "&&" -> if (rightValue == 0) 0 else 1
-            else -> throw InterpretationException("")
+            else -> throw InterpretationException("Unknown binary operator")
         }
 
         return InterpreterResult(resultValue, false)
@@ -135,10 +141,11 @@ class Interpreter(private val printStream: PrintStream,
 
     override fun visitLiteral(literal: Literal): InterpreterResult {
         try {
-            val intValue = literal.literal.toInt()
+            val intValue = literal.text.toInt()
+
             return InterpreterResult(intValue, false)
         } catch (e: NumberFormatException) {
-            throw InterpretationException("Number " + literal.literal + " is too large.")
+            throw InterpretationException("Number " + literal.text + " has too large value")
         }
     }
 
@@ -149,13 +156,5 @@ class Interpreter(private val printStream: PrintStream,
 
         private val DEFAULT_RESULT = 0
         private val PRINTLN = Identifier("println")
-
-        private fun boolToInt(bool: Boolean): Int {
-            return if (bool) 1 else 0
-        }
-
-        private fun intToBool(int: Int): Boolean {
-            return int != 0
-        }
     }
 }

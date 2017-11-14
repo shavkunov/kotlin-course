@@ -1,3 +1,5 @@
 package ru.spbau.mit
 
-data class InterpretationException(private val error: String) : Exception(error)
+class InterpretationException(override val message: String) : Exception()
+
+class ParsingException : Exception()

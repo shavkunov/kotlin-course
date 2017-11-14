@@ -5,7 +5,7 @@ import ru.spbau.mit.ast.Visitor
 interface Expression : Statement
 
 data class FunctionCall(
-        val funName: Identifier,
+        val funIdentifier: Identifier,
         val arguments: List<Expression>
 ) : Expression {
     override fun <T> accept(visitor: Visitor<T>): T {
@@ -32,7 +32,7 @@ data class Identifier(
 }
 
 data class Literal(
-        val literal: String
+        val text: String
 ) : Expression {
     override fun <T> accept(visitor: Visitor<T>): T {
         return visitor.visitLiteral(this)
