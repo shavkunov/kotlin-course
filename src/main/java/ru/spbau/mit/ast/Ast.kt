@@ -98,30 +98,21 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
         return visit(context.expression())
     }
 
-    override fun visitExpression(context: FunParser.ExpressionContext): AstNode {
-        context.IDENTIFIER()?.let {
-            return Identifier(context.IDENTIFIER().text) // visit identifier
-        }
+    override fun visitIdentifierExpression(context: FunParser.IdentifierExpressionContext): AstNode {
+        return Identifier(context.IDENTIFIER().text)
+    }
 
-        context.LITERAL()?.let {
-            return Literal(context.LITERAL().text) // visit literal
-        }
+    override fun visitLiteralExpression(context: FunParser.LiteralExpressionContext): AstNode {
+        return Identifier(context.LITERAL().text)
+    }
 
-        // visit binary expression
+    override fun visitBinaryExpression(context: FunParser.BinaryExpressionContext): AstNode {
         val leftOp = context.leftOp
         val rightOp = context.rightOp
         val operation = context.operation
-        if (leftOp != null && rightOp != null && operation != null) {
-            val visitedLeft = visit(leftOp) as Expression
-            val visitedRight = visit(rightOp) as Expression
-            return BinaryExpression(visitedLeft, visitedRight, operation.text)
-        }
 
-        val other = listOf<ParseTree?>(
-                context.functionCall(),
-                context.innerExpression()
-        )
-        val notNullExpression = other.find { it != null }
-        return visit(notNullExpression!!)
+        val visitedLeft = visit(leftOp) as Expression
+        val visitedRight = visit(rightOp) as Expression
+        return BinaryExpression(visitedLeft, visitedRight, operation.text)
     }
 }

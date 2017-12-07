@@ -52,25 +52,35 @@ returnStatement
 
 
 expression
-    : functionCall
+    : IDENTIFIER '(' arguments ')'
+        # functionCall
+
     | IDENTIFIER
+        # IdentifierExpression
+
     | LITERAL
-    | innerExpression
+        # LiteralExpression
+
+    | '(' expression ')'
+        # innerExpression
 
     | leftOp = expression operation = ('*' | '/' | '%') rightOp = expression
+        # binaryExpression
+
     | leftOp = expression operation = ('+' | '-') rightOp = expression
+        # binaryExpression
+
     | leftOp = expression operation = ('<' | '>' | '<=' | '>=') rightOp = expression
+        # binaryExpression
+
     | leftOp = expression operation = ('==' | '!=') rightOp = expression
+        # binaryExpression
+
     | leftOp = expression operation = '&&' rightOp = expression
+        # binaryExpression
+
     | leftOp = expression operation = '||' rightOp = expression
-    ;
-
-innerExpression
-    : '(' expression ')'
-    ;
-
-functionCall
-    : IDENTIFIER '(' arguments ')'
+        # binaryExpression
     ;
 
 arguments
