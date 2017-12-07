@@ -2,6 +2,7 @@ package ru.spbau.mit.ast
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.ParseTree
+import ru.spbau.mit.ParsingException
 import ru.spbau.mit.ast.nodes.*
 import ru.spbau.mit.ast.nodes.Function
 import ru.spbau.mit.parser.FunBaseVisitor
@@ -31,20 +32,16 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
     }
 
     override fun visitStatement(context: FunParser.StatementContext): AstNode {
-        val visitResult = visitChildren(context)
 
-        if (visitResult !is Statement) {
-            // throw exception
-        }
-
-        return visitResult
+        return visitChildren(context) as? Statement ?: throw ParsingException()
     }
 
     override fun visitFunction(context: FunParser.FunctionContext): AstNode {
         val funName = Identifier(context.IDENTIFIER().text)
 
         val paramsList = context.parameterNames()
-                            .IDENTIFIER()?.map { Identifier(it.text) }?.toList() ?: listOf()
+                                .IDENTIFIER()?.map { Identifier(it.text) }
+                                .orEmpty()
 
         val body = visit(context.blockWithBraces()) as Block
 
@@ -53,14 +50,10 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
 
     override fun visitVariable(context: FunParser.VariableContext): AstNode {
         val varName = Identifier(context.IDENTIFIER().text)
+        val expression = context.expression()
+        val visitedExpression = expression?.let { visit(expression) as Expression }
 
-        val expression = if (context.expression() != null) {
-            visit(context.expression()) as Expression
-        } else {
-            null
-        }
-
-        return Variable(varName, expression)
+        return Variable(varName, visitedExpression)
     }
 
     override fun visitWhileCycle(context: FunParser.WhileCycleContext): AstNode {
@@ -74,11 +67,7 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
         val condition = visit(context.expression()) as Expression
         val ifBlocks = context.blockWithBraces().map { visit(it) }
         val body = ifBlocks[0] as Block
-        val elseBody = if (ifBlocks.size > 1) {
-            ifBlocks[1] as Block
-        } else {
-            null
-        }
+        val elseBody = ifBlocks.getOrNull(1) as Block
 
         return IfStatement(condition, body, elseBody)
     }
@@ -99,7 +88,8 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
     override fun visitFunctionCall(context: FunParser.FunctionCallContext): AstNode {
         val identifier = Identifier(context.IDENTIFIER().text)
         val arguments = context.arguments()
-                           .expression()?.map { visit(it) as Expression }?.toList() ?: listOf()
+                               .expression()?.map { visit(it) as Expression }
+                               .orEmpty()
 
         return FunctionCall(identifier, arguments)
     }
@@ -109,17 +99,15 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
     }
 
     override fun visitExpression(context: FunParser.ExpressionContext): AstNode {
-        val identifier = context.IDENTIFIER()
-        if (identifier != null) {
-            return Identifier(identifier.text)
+        context.IDENTIFIER()?.let {
+            return Identifier(context.IDENTIFIER().text) // visit identifier
         }
 
-        val literal = context.LITERAL()
-        if (literal != null) {
-            return Literal(literal.text)
+        context.LITERAL()?.let {
+            return Literal(context.LITERAL().text) // visit literal
         }
 
-        context.LITERAL()
+        // visit binary expression
         val leftOp = context.leftOp
         val rightOp = context.rightOp
         val operation = context.operation

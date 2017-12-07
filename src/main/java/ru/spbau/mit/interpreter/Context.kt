@@ -1,6 +1,5 @@
 package ru.spbau.mit.interpreter
 
-import ru.spbau.mit.InterpretationException
 import ru.spbau.mit.ast.nodes.Function
 import java.util.*
 
@@ -13,8 +12,8 @@ class Context(private val parent: Context? = null) {
 
 
     fun addVariable(name: String, value: Int = 0) {
-        if (variables.containsKey(name)) {
-            throw InterpretationException("Variable $name is already defined")
+        check(variables.containsKey(name)) {
+            "Variable $name is already defined"
         }
 
         variables.put(name, value)
@@ -22,7 +21,11 @@ class Context(private val parent: Context? = null) {
 
     fun setVariableValue(name: String, value: Int) {
         if (name !in variables) {
-            parent?.setVariableValue(name, value) ?: throw InterpretationException("Variable $name isn't defined")
+            checkNotNull(parent) {
+                "Variable $name isn't defined"
+            }
+
+            parent?.setVariableValue(name, value)
         } else {
             variables[name] = value
         }
@@ -34,8 +37,8 @@ class Context(private val parent: Context? = null) {
 
     fun addFunction(function: Function) {
         val name = function.functionIdentifier.name
-        if (functions.containsKey(name)) {
-            throw InterpretationException("Function $name is already defined")
+        check(functions.containsKey(name)) {
+            "Function $name is already defined"
         }
 
         functions.put(name, function)
