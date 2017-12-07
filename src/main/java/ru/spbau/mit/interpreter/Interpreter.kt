@@ -67,8 +67,9 @@ class Interpreter(private val outputStream: PrintStream,
     }
 
     override fun visitAssignment(assignment: Assignment): InterpreterResult {
-        context.setVariableValue(assignment.identifier.name,
-                                 visit(assignment.expression).value!!)
+        val value = visit(assignment.expression).value!!
+        context.setVariableValue(assignment.identifier.name, value)
+
         return UNIT_RESULT
     }
 
@@ -77,8 +78,10 @@ class Interpreter(private val outputStream: PrintStream,
     }
 
     override fun visitFunctionCall(functionCall: FunctionCall): InterpreterResult {
-        val function = context.getFunction(functionCall.funIdentifier.name)
+
         val args = functionCall.arguments.map { visit(it).value!! }
+        val function = context.getFunction(functionCall.funIdentifier.name)
+
         if (function != null) {
             val outerContext = context
             context = Context(context)

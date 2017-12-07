@@ -12,7 +12,7 @@ class Context(private val parent: Context? = null) {
 
 
     fun addVariable(name: String, value: Int = 0) {
-        check(name !in variables) {
+        require(name !in variables) {
             "Variable $name is already defined"
         }
 
@@ -20,7 +20,7 @@ class Context(private val parent: Context? = null) {
     }
 
     fun setVariableValue(name: String, value: Int) {
-        if (name in variables) {
+        if (name !in variables) {
             checkNotNull(parent) {
                 "Variable $name isn't defined"
             }
@@ -37,7 +37,7 @@ class Context(private val parent: Context? = null) {
 
     fun addFunction(function: Function) {
         val name = function.functionIdentifier.name
-        check(name !in functions) {
+        require(name !in functions) {
             "Function $name is already defined"
         }
 

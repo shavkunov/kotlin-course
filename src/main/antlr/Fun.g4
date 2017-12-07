@@ -55,11 +55,11 @@ expression
     : IDENTIFIER '(' arguments ')'
         # functionCall
 
-    | IDENTIFIER
-        # IdentifierExpression
-
     | LITERAL
-        # LiteralExpression
+        # literalExpression
+
+    | IDENTIFIER
+        # identifierExpression
 
     | '(' expression ')'
         # innerExpression

@@ -67,7 +67,7 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
         val condition = visit(context.expression()) as Expression
         val ifBlocks = context.blockWithBraces().map { visit(it) }
         val body = ifBlocks[0] as Block
-        val elseBody = ifBlocks.getOrNull(1) as Block
+        val elseBody = ifBlocks.getOrNull(1) as Block?
 
         return IfStatement(condition, body, elseBody)
     }
@@ -103,7 +103,7 @@ class AstVisitor : FunBaseVisitor<AstNode>() {
     }
 
     override fun visitLiteralExpression(context: FunParser.LiteralExpressionContext): AstNode {
-        return Identifier(context.LITERAL().text)
+        return Literal(context.LITERAL().text)
     }
 
     override fun visitBinaryExpression(context: FunParser.BinaryExpressionContext): AstNode {
