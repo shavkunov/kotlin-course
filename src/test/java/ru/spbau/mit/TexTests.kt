@@ -2,17 +2,21 @@ package ru.spbau.mit
 
 import junit.framework.Assert.assertEquals
 import org.junit.Test
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 
 class TexTests {
     @Test
     fun testDocument() {
+        val byteOutputStream = ByteArrayOutputStream()
+        val printStream = PrintStream(byteOutputStream)
+
         val rows = listOf(1, 2, 3, 4)
         val doc =
                 document {
                     documentClass("beamer")
                     usePackage("babel", "russian" /* varargs */)
-                    frame(frameTitle="frametitle") {
-                        +("arg1" to "arg2")
+                    frame("arg1=arg2", frameTitle = "frametitle") {
 
                         itemize {
                             for (row in rows) {
@@ -29,9 +33,9 @@ class TexTests {
                                 """.trimMargin()
                         }
                     }
-                }
+                }.toOutputStream(printStream)
 
-        assertEquals(doc.toString(), """
+        assertEquals(String(byteOutputStream.toByteArray()), """
             |\documentclass{beamer}
             |\usepackage[russian]{babel}
             |\begin{document}
@@ -59,14 +63,18 @@ class TexTests {
 
     @Test
     fun testAlign() {
+        val byteOutputStream = ByteArrayOutputStream()
+        val printStream = PrintStream(byteOutputStream)
+
         val doc =
                 document {
                     documentClass("article")
                     center { +"center" }
                     right { +"right" }
                     left { +"left" }
-                }
-        assertEquals(doc.toString(), """
+                }.toOutputStream(printStream)
+
+        assertEquals(String(byteOutputStream.toByteArray()), """
             |\documentclass{article}
             |\begin{document}
             |\begin{center}
@@ -84,12 +92,16 @@ class TexTests {
 
     @Test
     fun testMath() {
+        val byteOutputStream = ByteArrayOutputStream()
+        val printStream = PrintStream(byteOutputStream)
+
         val doc =
                 document {
                     documentClass("article")
                     math("A_n = \\sum_i^n i")
-                }
-        assertEquals(doc.toString(), """
+                }.toOutputStream(printStream)
+
+        assertEquals(String(byteOutputStream.toByteArray()), """
             |\documentclass{article}
             |\begin{document}
             |${'$'}A_n = \sum_i^n i${'$'}
@@ -99,20 +111,24 @@ class TexTests {
 
     @Test
     fun testEnumerate() {
+        val byteOutputStream = ByteArrayOutputStream()
+        val printStream = PrintStream(byteOutputStream)
+
         val doc =
                 document {
                     documentClass("article")
                     math("A_n = \\sum_i^n i")
                     center {
-                        +"test"
+                        + "test"
 
                         enumerate {
                             item { +"1" }
                             item { +"test" }
                         }
                     }
-                }
-        assertEquals(doc.toString(), """
+                }.toOutputStream(printStream)
+
+        assertEquals(String(byteOutputStream.toByteArray()), """
             |\documentclass{article}
             |\begin{document}
             |${'$'}A_n = \sum_i^n i${'$'}
@@ -137,7 +153,7 @@ class TexTests {
         }.toString()
     }
 
-    @Test(expected = TexException::class)
+    @Test(expected = Exception::class)
     fun testTwoDocClasses() {
         document {
             documentClass("article", "12pt")
@@ -149,6 +165,9 @@ class TexTests {
 
     @Test
     fun testFrame() {
+        val byteOutputStream = ByteArrayOutputStream()
+        val printStream = PrintStream(byteOutputStream)
+
         val doc =
                 document {
                     documentClass("beamer")
@@ -161,8 +180,9 @@ class TexTests {
 
                         math("ans = EZ + \\sum knowledge")
                     }
-                }
-        assertEquals(doc.toString(), """
+                }.toOutputStream(printStream)
+
+        assertEquals(String(byteOutputStream.toByteArray()), """
             |\documentclass{beamer}
             |\begin{document}
             |\begin{frame}

@@ -1,24 +1,31 @@
 package ru.spbau.mit
 
+import java.io.PrintStream
+
 @DslMarker
 annotation class TexMarker
 
 @TexMarker
-interface TexElement {
-    fun render(builder: StringBuilder)
+abstract class TexElement(private val additionalArgs: MutableList<String> = mutableListOf()) {
+
+    abstract fun render(builder: StringBuilder)
+
+    open operator fun String.unaryPlus() {
+        additionalArgs.add(this)
+    }
 }
 
-class Text(private val text: String) : TexElement {
+class Text(private val text: String) : TexElement() {
     override fun render(builder: StringBuilder) {
         builder.append("$text\n")
     }
 }
 
 open class Command(
-        protected val name: String,
+        private val name: String,
         protected val arg: String,
-        protected val additionalArgs : MutableList<String>
-) : TexElement {
+        private val additionalArgs : MutableList<String>
+) : TexElement(additionalArgs) {
     override fun render(builder: StringBuilder) {
         builder.append("\\$name")
 
@@ -27,10 +34,6 @@ open class Command(
         }
 
         builder.append("{$arg}\n")
-    }
-
-    operator fun Pair<String, String>.unaryPlus() {
-        additionalArgs.add("$first=$second")
     }
 }
 
@@ -56,7 +59,7 @@ class UsePackage(packageName: String, args: MutableList<String>) : Command("usep
 \end{tagName}
  */
 abstract class Tag(private val tagName: String,
-                   private val additionalArgs : MutableList<String>) : TexElement {
+                   private val additionalArgs : MutableList<String>) : TexElement(additionalArgs) {
     protected val children = mutableListOf<TexElement>()
 
     override fun render(builder: StringBuilder) {
@@ -66,25 +69,23 @@ abstract class Tag(private val tagName: String,
             builder.append(additionalArgs.joinToString(",", "[", "]"))
         }
         builder.append("\n")
-
-        for (child in children) {
-            child.render(builder)
-        }
+        renderChildren(builder)
         builder.append("\\end{$tagName}\n")
     }
 
     protected fun <T : TexElement> initElement(element: T, init: T.() -> Unit) {
         element.init()
         children.add(element)
-        //return element
     }
 
-    operator fun String.unaryPlus() {
+    override operator fun String.unaryPlus() {
         children.add(Text(this))
     }
 
-    operator fun Pair<String, String>.unaryPlus() {
-        additionalArgs.add("$first=$second")
+    protected fun renderChildren(builder: StringBuilder) {
+        for (child in children) {
+            child.render(builder)
+        }
     }
 }
 
@@ -96,33 +97,31 @@ abstract class Tag(private val tagName: String,
 \end{tagName}
  */
 open class ItemizedTag(tagName: String, additionalArgs: MutableList<String>) : Tag(tagName, additionalArgs) {
-    fun item(init: Item.() -> Unit) = initElement(Item(), init)
+    fun item(vararg additionalArgs: String, init: Item.() -> Unit) = initElement(Item(additionalArgs.toMutableList()), init)
 }
 
-class Item : TagWithContent("item", mutableListOf()) {
+class Item(additionalArgs: MutableList<String>) : TagWithContent("item", additionalArgs) {
     override fun render(builder: StringBuilder) {
         builder.append("\\item\n")
 
-        for (child in children) {
-            child.render(builder)
-        }
+        renderChildren(builder)
     }
 }
 
-class Itemize : ItemizedTag("itemize", mutableListOf())
+class Itemize(additionalArgs: MutableList<String>) : ItemizedTag("itemize", additionalArgs)
 
-class Enumerate : ItemizedTag("enumerate", mutableListOf())
+class Enumerate(additionalArgs: MutableList<String>) : ItemizedTag("enumerate", additionalArgs)
 
 abstract class TagWithContent(tagName: String, additionalArgs : MutableList<String>) : Tag(tagName, additionalArgs) {
     fun math(formula: String, vararg additionalArgs: String) {
         children.add(Math(formula, additionalArgs.toMutableList()))
     }
 
-    fun itemize(init: Itemize.() -> Unit) = initElement(Itemize(), init)
+    fun itemize(vararg additionalArgs: String, init: Itemize.() -> Unit) =
+            initElement(Itemize(additionalArgs.toMutableList()), init)
 
-    fun enumerate(init: Enumerate.() -> Unit) = initElement(Enumerate(), init)
-
-    fun frame(frameTitle: String, init: Frame.() -> Unit) = initElement(Frame(frameTitle), init)
+    fun enumerate(vararg additionalArgs: String, init: Enumerate.() -> Unit) =
+            initElement(Enumerate(additionalArgs.toMutableList()), init)
 
     fun customTag(name: String, vararg additionalArgs: String, init: CustomTag.() -> Unit) =
             initElement(CustomTag(name, additionalArgs.toMutableList()), init)
@@ -140,7 +139,7 @@ class Center : TagWithContent("center", mutableListOf())
 
 class Right : TagWithContent("flushright", mutableListOf())
 
-class Frame(frameTitle: String) : TagWithContent("frame", mutableListOf()) {
+class Frame(frameTitle: String, additionalArgs: MutableList<String>) : TagWithContent("frame", additionalArgs) {
     init {
         children.add(FrameTitle(frameTitle))
     }
@@ -158,12 +157,16 @@ class Document : TagWithContent("document", mutableListOf()) {
         super.render(builder)
     }
 
+    fun frame(vararg additionalArgs: String, frameTitle: String, init: Frame.() -> Unit) =
+            initElement(Frame(frameTitle, additionalArgs.toMutableList()), init)
+
     fun documentClass(
             mainArg: String,
             vararg additionalArgs: String,
             init: DocumentClass.() -> Unit = {}) {
-        if (documentClass != null) {
-            throw TexException("More than one document class found")
+
+        require(documentClass == null) {
+            "More than one document class found"
         }
 
         val documentClass = DocumentClass(mainArg, additionalArgs.toMutableList())
@@ -181,11 +184,10 @@ class Document : TagWithContent("document", mutableListOf()) {
         usedPackages.add(usePackage)
     }
 
-    override fun toString(): String {
-        val stringBuilder = StringBuilder()
-        render(stringBuilder)
+    override fun toString(): String = buildString(this::render)
 
-        return stringBuilder.toString()
+    fun toOutputStream(printStream: PrintStream) {
+        printStream.append(toString())
     }
 }
 
